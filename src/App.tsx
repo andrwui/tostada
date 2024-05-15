@@ -8,28 +8,54 @@ function App() {
         direction: 'down',
       }}
     >
-      <Button />
+      <div className="w-full flex items-center justify-center gap-10 h-16">
+        <ToastButton />
+        <ResetButton />
+      </div>
     </TostadaProvider>
   )
 }
 
 export default App
 
-const Button = () => {
+const ToastButton = () => {
   const { addToast } = useTostada()
 
   const anadirtostada = () => {
     addToast({
-      element: <SimpleToast>Hello there!</SimpleToast>,
+      element: <SimpleToast>Toast sample</SimpleToast>,
       options: {
-        duration: 2000,
+        duration: 3000,
         animation: {
-          speed: 300,
-          type: 'fade_down',
+          duration: {
+            in: 200,
+            out: 500,
+          },
+          size: true,
+          origin: 'top',
         },
       },
     })
   }
 
-  return <button onClick={anadirtostada}>Make a tostada!</button>
+  return (
+    <button
+      className="bg-gray-950 text-white font-semibold p-2 rounded-md"
+      onClick={anadirtostada}
+    >
+      Make a toast
+    </button>
+  )
+}
+const ResetButton = () => {
+  const { resetToasts } = useTostada()
+
+  return (
+    <button
+      className="bg-gray-950 text-white font-semibold p-2 rounded-md"
+      onClick={() => resetToasts()}
+    >
+      Reset toasts
+    </button>
+  )
 }

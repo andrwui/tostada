@@ -12,6 +12,7 @@ import { Toast } from './tostada'
 type TostadaContextType = {
   toasts: Toast[]
   addToast: (toast: Toast) => void
+  resetToasts: () => void
 }
 
 const TostadaContext = createContext<TostadaContextType>(
@@ -41,12 +42,17 @@ export const TostadaProvider = ({
     })
   }
 
+  const resetToasts = () => {
+    setToasts([])
+  }
+
   return (
-    <TostadaContext.Provider value={{ toasts, addToast }}>
+    <TostadaContext.Provider value={{ toasts, addToast, resetToasts }}>
       {children}
       <div
         style={{
           display: 'flex',
+          width: 'max-content',
           flexDirection:
             options?.direction == 'up' ? 'column-reverse' : 'column',
         }}
@@ -69,24 +75,39 @@ type ToastContainerProps = {
 const ToastContainer = ({ children, tostada }: ToastContainerProps) => {
   const [isVisible, setIsVisible] = useState<boolean>(false)
   const [shouldRender, setShouldRender] = useState<boolean>(false)
+  const [transitionDuration, setTransitionDuration] = useState<number>()
 
-  const { options } = tostada
+  const { duration, animation } = tostada.options
+  const { in: inDuration, out: outDuration } = animation!.duration
 
   useEffect(() => {
     setShouldRender(true)
-    const transition = setTimeout(() => {
-      setIsVisible(true)
-    }, options?.animation?.speed || 200)
+    setTransitionDuration(inDuration)
+    const showTransition = new Promise((resolve) => {
+      setTimeout(() => {
+        setIsVisible(true)
+        resolve(null)
+      }, inDuration || 200)
+    })
 
-    const duration = setTimeout(() => {
-      setIsVisible(false)
-    }, options?.duration || 2000)
-
-    return () => {
-      clearTimeout(transition)
-      clearTimeout(duration)
-    }
-  }, [options?.animation?.speed, options?.duration])
+    showTransition.then(() => {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(null)
+          setTransitionDuration(outDuration)
+        }, duration)
+      })
+        .then(() => {
+          return new Promise((resolve) => {
+            setIsVisible(false)
+            setTimeout(() => {
+              resolve(null)
+            }, outDuration || 200)
+          })
+        })
+        .then(() => setShouldRender(false))
+    })
+  }, [inDuration, outDuration, duration])
 
   const onTransitionEnd = () => {
     if (!isVisible) {
@@ -94,44 +115,50 @@ const ToastContainer = ({ children, tostada }: ToastContainerProps) => {
     }
   }
 
-  const animations: Record<string, CSSProperties> = {
-    fade: {
-      transition: `all ${tostada.options?.animation?.speed || '500'}ms`,
-      opacity: isVisible ? 1 : 0,
-    },
-    fade_up: {
-      transition: `all ${tostada.options?.animation?.speed || '500'}ms`,
-      opacity: isVisible ? 1 : 0,
-      translate: isVisible ? '0 0' : '0 15% ',
-    },
-    fade_down: {
-      opacity: isVisible ? 1 : 0,
-      translate: isVisible ? '0 0' : '0 -15% ',
-    },
-    fade_left: {
-      transition: `all ${tostada.options?.animation?.speed || '500'}ms`,
-      opacity: isVisible ? 1 : 0,
-      translate: isVisible ? '0 0' : '-1% 0',
-    },
-    fade_right: {
-      transition: `all ${tostada.options?.animation?.speed || '500'}ms`,
-      opacity: isVisible ? 1 : 0,
-      translate: isVisible ? '0 0' : '1% 0',
-    },
+  let slideDirections
+  switch (animation?.origin?.split(' ')[0]) {
+    case 'top':
+      slideDirections = '0 -20%'
+      break
+    case 'right':
+      slideDirections = '10% 0'
+      break
+    case 'left':
+      slideDirections = '-10% 0'
+      break
+    case 'bottom':
+      slideDirections = '0 20%'
+      break
   }
 
-  const animation = options?.animation?.type
-    ? animations[options?.animation?.type]
-    : animations.fade
+  const toastContainerStyle: CSSProperties = {
+    transition: `all ${transitionDuration || '500'}ms`,
+    maxHeight: isVisible ? '1000px' : '0',
+    overflow: 'hidden',
+    width: 'auto',
+  }
+
+  const animations: Record<string, CSSProperties> = {
+    fade: {
+      opacity: isVisible ? 1 : 0,
+    },
+    size: {
+      transform: isVisible ? 'scale(1)' : 'scale(0)',
+      transformOrigin: animation?.origin || 'center',
+    },
+    slide: {
+      translate: isVisible ? '0 0' : slideDirections,
+    },
+  }
 
   return (
     shouldRender && (
       <div
         style={{
-          ...animation,
-          transition: `all ${tostada.options?.animation?.speed || '500'}ms`,
-          maxHeight: isVisible ? '1000px' : '0',
-          overflow: 'hidden',
+          ...toastContainerStyle,
+          ...(animation?.fade && animations.fade),
+          ...(animation?.size && animations.size),
+          ...(animation?.slide && animations.slide),
         }}
         onTransitionEnd={onTransitionEnd}
       >

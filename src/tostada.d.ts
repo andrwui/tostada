@@ -1,12 +1,24 @@
 import { ReactNode } from 'react'
 
+type Direction = 'center' | 'top' | 'bottom' | 'left' | 'right'
+
+type Animation = {
+  duration: {
+    in: number
+    out: number
+  }
+  size?: boolean
+  fade?: boolean
+  slide?: boolean
+  origin?: Slide extends true
+    ? Direction
+    : `${Direction} ${Direction}` | Direction
+}
+
 export type Toast = {
   element: ReactNode | ReactElement
-  options?: {
+  options: {
     duration: number
-    animation?: {
-      speed: number
-      type?: 'fade' | 'fade_up' | 'fade_down' | 'fade_left' | 'fade_right'
-    }
+    animation?: Animation
   }
 }
